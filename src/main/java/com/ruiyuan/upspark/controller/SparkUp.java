@@ -103,7 +103,7 @@ public class SparkUp {
         // 创建yarn的客户端，此类中有杀死任务的方法
         YarnClient yarnClient = YarnClient.createYarnClient();
 
-        //cs  commit and push
+        //ok
 
         // 初始化yarn的客户端
         yarnClient.init(cf);
