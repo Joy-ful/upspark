@@ -52,12 +52,12 @@ public class SparkUp {
                 .startApplication(new SparkAppHandle.Listener() {
                     @Override
                     public void stateChanged(SparkAppHandle handle) {
-                        System.out.println("**********  state  changed  **********");
+                        System.out.println("**********  stateChanged  changed  **********");
                     }
 
                     @Override
                     public void infoChanged(SparkAppHandle handle) {
-                        //log.info("提交任务，任务状态：" + handle.getState());
+                        System.out.println("**********  infoChanged  changed  **********");
                     }
                 });
 
