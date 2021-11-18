@@ -8,6 +8,7 @@ import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
 import org.apache.hadoop.yarn.client.api.YarnClient;
+import org.apache.hadoop.yarn.client.api.impl.YarnClientImpl;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.spark.launcher.SparkAppHandle;
@@ -102,8 +103,6 @@ public class SparkUp {
 
         // 创建yarn的客户端，此类中有杀死任务的方法
         YarnClient yarnClient = YarnClient.createYarnClient();
-
-        //push  commit
 
         // 初始化yarn的客户端
         yarnClient.init(cf);
