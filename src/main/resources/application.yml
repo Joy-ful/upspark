@@ -14,3 +14,18 @@ mybatis-plus:
     #content-type: text/html
     mode: HTML5
 
+
+#hdfs的ip+端口  hdfs配置使用
+#HDFS_HOSTS: "hdfs:10.178.192.175:9870"
+HDFS_HOSTS: "hdfs:10.10.13.180:9870"
+#hdfs_seq_dir
+hdfsDir: "/UAVVideo/"
+HDFS_URL: "10.10.13.180:14000"
+
+
+#ES
+esHostports: 10.10.13.181:9200,10.10.13.183:9200,10.10.13.184:9200
+esHost: 10.10.13.181,10.10.13.183,10.10.13.184
+esport: 9200
+esindex: "vstream-ai-service"
+estype: "_doc"

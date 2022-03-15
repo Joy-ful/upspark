@@ -26,9 +26,64 @@ import java.util.HashMap;
 @RestController
 public class SparkUp {
 
-    @GetMapping(value = "/submitSparkJob")
+    @GetMapping(value = "/submitSpark")
     public String submitSparkJob() throws IOException {
+
         HashMap env = new HashMap();
+        //设置日期格式
+        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+        //hadoop、spark环境变量读取
+        env.put("HADOOP_CONF_DIR", "/etc/hadoop/conf");
+        env.put("YARN_CONF_DIR", "/etc/hadoop/conf");
+        env.put("SPARK_CONF_DIR", "/etc/spark/conf");
+        env.put("JAVA_HOME", "/opt/module/java");
+
+        //创建spark启动对象，并设置监听，spark启动的各参数
+        SparkAppHandle handler = null;
+        try {
+            handler = new SparkLauncher(env)
+                    .setSparkHome("/opt/cloudera/parcels/CDH-6.2.0-1.cdh6.2.0.p0.967373/lib/spark")
+                    .setAppResource("/software/UVVideo/UAVideo/target/UAVVideoStreamingManagement-1.0.jar")
+                    .setMainClass("com.ruiyuan.sparkjobs.UAVVideoStreamingTask")
+                    .setAppName("UAVVideoStreamingTask" + " " + df.format(new Date()))
+                    .setMaster("yarn")
+                    .setDeployMode("cluster")
+                    .setConf("spark.driver.memory", "2g")
+                    .setConf("spark.executor.memory", "1g")
+                    .setConf("spark.executor.cores", "3")
+                    .setVerbose(true)
+                    .startApplication(new SparkAppHandle.Listener() {
+                        @Override
+                        public void stateChanged(SparkAppHandle handle) {
+                            System.out.println("**********  stateChanged  changed  **********");
+                        }
+
+                        @Override
+                        public void infoChanged(SparkAppHandle handle) {
+                            System.out.println("**********  infoChanged  changed  **********");
+                        }
+                    });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        while (!"FINISHED".equalsIgnoreCase(handler.getState().toString()) && !"FAILED".equalsIgnoreCase(handler.getState().toString())) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        //jobID
+        final String appId = handler.getAppId();
+
+
+        return appId;
+
+
+
+        /*HashMap env = new HashMap();
         SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//设置日期格式
 
         //hadoop、spark环境变量读取
@@ -40,9 +95,9 @@ public class SparkUp {
         //创建spark启动对象，并设置监听，spark启动的各参数
         SparkAppHandle handler = new SparkLauncher(env)
                 .setSparkHome("/opt/cloudera/parcels/CDH-6.2.0-1.cdh6.2.0.p0.967373/lib/spark")
-                .setAppResource("/software/queue_stream.py")
-                .setMainClass("queue_stream")
-                .setAppName("python_pi" + " " + df.format(new Date()))
+                .setAppResource("/software/UVVideo/target/UAVVideoStreamingManagement-1.0-jar-with-dependencies.jar")
+                .setMainClass("UAVVideoStreamingTask")
+                .setAppName("UAVVideoStreamingTask" + " " + df.format(new Date()))
                 .setMaster("yarn")
                 .setDeployMode("cluster")
                 .setConf("spark.driver.memory", "2g")
@@ -61,19 +116,16 @@ public class SparkUp {
                     }
                 });
 
-        while (!"FINISHED".equalsIgnoreCase(handler.getState().toString()) && !"FAILED".equalsIgnoreCase(handler.getState().toString()))
+        while (!"FINISHED".equalsIgnoreCase(handler.getState().toString()) && !"FAILED".equalsIgnoreCase(handler.getState().toString())) {
             try {
                 Thread.sleep(10000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-        return handler.getAppId();
+        }
+        return handler.getAppId();*/
     }
 
-    /*@GetMapping(value = "/sparkKill")
-    public void stopTast() {
-        handler.kill();
-    }*/
 
     /**
      * 停止spark任务
@@ -82,8 +134,8 @@ public class SparkUp {
      *
      * @param appIdStr 需要取消的任务id
      */
-    @GetMapping(value = "/killSparkJob/{appIdStr}")
-    public void killSparkJob(@PathVariable("appIdStr") String appIdStr) {
+    @GetMapping(value = "/killSpark/{appIdStr}")
+    public String killSparkJob(String appIdStr) {
         log.info("取消spark任务,任务id：" + appIdStr);
 
         // 初始化 yarn的配置
@@ -120,6 +172,7 @@ public class SparkUp {
 
         // 关闭yarn客户端
         yarnClient.stop();
+        return "successs: " + appIdStr;
     }
 
     private static ApplicationId getAppId(String appIdStr) {
