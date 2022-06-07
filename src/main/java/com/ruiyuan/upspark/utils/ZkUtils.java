@@ -77,8 +77,6 @@ public class ZkUtils {
 
         } catch (Exception e) {
             e.printStackTrace();
-        } finally {
-//            close();
         }
     }
 
@@ -90,8 +88,6 @@ public class ZkUtils {
         } catch (Exception e) {
             e.printStackTrace();
             return null;
-        } finally {
-//            close();
         }
     }
 
@@ -120,23 +116,53 @@ public class ZkUtils {
 
         } catch (Exception e) {
             e.printStackTrace();
-        } finally {
-//            close();
         }
     }
 
-    public int getMysqlCount(String UAVid, String Taskid) {
+    public int getMysqlCount(String taskId) {
         connect();
+        StringBuilder sb1 = new StringBuilder();
+        String offsetPath = sb1
+                .append(basePath)
+                .append("/imageCount")
+                .append("/" + taskId)
+                //.append("/count")
+                .toString();
         try {
-            byte[] offset = cur.getData().forPath(basePath + "/imageCount" + "/" + UAVid + "/" + Taskid + "/count");
+            byte[] offset = cur.getData().forPath(offsetPath);
             return Integer.parseInt(new String(offset));
         } catch (Exception e) {
             e.printStackTrace();
-            return 0;
-        } finally {
-//            close();
+            return -1;
         }
     }
+
+    public String deleteMysqlCount(String taskId) {
+        connect();
+        StringBuilder sb1 = new StringBuilder();
+        String offsetPath = sb1
+                .append(basePath)
+                .append("/imageCount")
+                .append("/" + taskId)
+                //.append("/count")
+                .toString();
+
+        try {
+            cur.delete().forPath(offsetPath);
+
+            Stat stat_fromOffset_path = cur.checkExists().forPath(offsetPath);
+            if (null == stat_fromOffset_path) {
+                return "deleteSuccess";
+            } else {
+                return "deleteFail";
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "-1";
+        }
+
+    }
+
 
     public void close() {
         cur.close();

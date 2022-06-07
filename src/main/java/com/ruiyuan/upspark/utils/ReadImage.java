@@ -37,7 +37,7 @@ public class ReadImage {
         //hdfs的配置
         Configuration conf = new Configuration();
         Path newpath = new Path(hdfsDir + path);
-        System.out.println(newpath);
+        //System.out.println(newpath);
 
         SequenceFile.Reader reader = null;
         SequenceFile.Reader.Option option = SequenceFile.Reader.file(newpath);

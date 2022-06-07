@@ -1,5 +1,6 @@
 package com.ruiyuan.upspark.utils;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.http.HttpHost;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.DocWriteRequest;
@@ -12,19 +13,28 @@ import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.Strings;
+import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentType;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.*;
 import org.elasticsearch.index.reindex.BulkByScrollResponse;
+import org.elasticsearch.index.reindex.UpdateByQueryAction;
 import org.elasticsearch.index.reindex.UpdateByQueryRequest;
+import org.elasticsearch.index.reindex.UpdateByQueryRequestBuilder;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.script.ScriptType;
+import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.fetch.subphase.FetchSourceContext;
+import org.elasticsearch.search.sort.ScoreSortBuilder;
+import org.elasticsearch.search.sort.SortOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +53,7 @@ public class EsUtils {
     private final Logger logger = LoggerFactory.getLogger(EsUtils.class);
 
     private RestHighLevelClient client;
+
 
     public EsUtils() {
         super();
@@ -201,6 +212,8 @@ public class EsUtils {
 
     public boolean updateByQuery(String MiopictureURL, String SeqpictureURL) throws IOException {
         UpdateByQueryRequest updateByQuery = new UpdateByQueryRequest(index);
+        String escape = EsUtils.escape(MiopictureURL);
+        //System.out.println(MiopictureURL+SeqpictureURL);
         //设置分片并行
         //updateByQuery.setSlices(2);
         //设置版本冲突时继续执行
@@ -208,8 +221,8 @@ public class EsUtils {
         //设置更新完成后刷新索引 ps很重要如果不加可能数据不会实时刷新
         updateByQuery.setRefresh(true);
         //查询条件如果是and关系使用must 如何是or关系使用should
-        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery()
-                .filter(QueryBuilders.termQuery("pictureURL", MiopictureURL));
+        FuzzyQueryBuilder boolQueryBuilder = QueryBuilders.fuzzyQuery("pictureURL", escape);
+                //.filter(QueryBuilders.termQuery("pictureURL", MiopictureURL));
         //.should(QueryBuilders.termQuery("name", "张三"));
         //System.out.println(boolQueryBuilder);
         updateByQuery.setQuery(boolQueryBuilder);
@@ -218,7 +231,7 @@ public class EsUtils {
         params.put("pictureURL", SeqpictureURL);
         updateByQuery.setScript(new Script(ScriptType.INLINE,
                 "painless",
-                "ctx._source.pictureURL ="+ "'"+SeqpictureURL+"'", params));
+                "ctx._source.pictureURL =" + "'" + SeqpictureURL + "'", params));
 
 
         BulkByScrollResponse response = client.
@@ -226,42 +239,99 @@ public class EsUtils {
         return response.getStatus().getUpdated() > 0 ? true : false;
 
     }
-    public Object updateOneESData3(String pURL, String NEWpURL) {
 
-        // UpdateByQueryRequest updateByQueryRequest, RequestOptions options
-        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-        boolQueryBuilder.should(QueryBuilders.prefixQuery("pictureURL", pURL));
-        //boolQueryBuilder.must(QueryBuilders.matchQuery("ip","192"));
-        // boolQueryBuilder.must(QueryBuilders.matchQuery("method","createMethod"));
 
-        UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(index);
-        /** 需要更新的数据 */
-        Map<String, Object> paramsMap = new HashMap<>();
-        paramsMap.put("pictureURL", NEWpURL);
-        ScriptType type = ScriptType.INLINE;
-        String lang = "painless";
-        StringBuilder script = new StringBuilder();
-        script.append("ctx._source").append("['pictureURL']").append("=").append(NEWpURL);
-        String idOrCode = script.toString();
-        //System.out.println(idOrCode);
-        /** idOrCode 是执行的命令  */
-        updateByQueryRequest.setScript(new Script(type, lang, "ctx._source.pictureURL ="+ "'"+NEWpURL+"'", paramsMap));
+    public  SearchHits searchsss(String MiopictureURL) throws IOException {
+        SearchRequest searchRequest = new SearchRequest(index);
 
-        /**   默认情况下，版本冲突会中止UpdateByQueryRequest进程  //设置版本冲突时继续 */
-        updateByQueryRequest.setConflicts("proceed");
-        /** 查询文档  */
-        updateByQueryRequest.setQuery(boolQueryBuilder);
-        /** 单次处理1000个文档 */
-        //updateByQueryRequest.setBatchSize(1000);
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+        //关键字匹配
+        MatchQueryBuilder matchQueryBuilder = new MatchQueryBuilder("uav", MiopictureURL);
+        //模糊匹配
+        matchQueryBuilder.fuzziness(Fuzziness.AUTO);
+        sourceBuilder.query(matchQueryBuilder);
+        //第几页
+        //sourceBuilder.from(start);
+        //第几条
+        //sourceBuilder.size(count);
 
-        BulkByScrollResponse bulkByScrollResponse = null;
-        try {
-            bulkByScrollResponse = client.updateByQuery(updateByQueryRequest, RequestOptions.DEFAULT);
-        } catch (IOException e) {
-            e.printStackTrace();
+        searchRequest.source(sourceBuilder);
+        //匹配度从高到低
+        ///sourceBuilder.sort(new ScoreSortBuilder().order(SortOrder.DESC));
+
+        SearchResponse searchResponse = client.search(searchRequest,RequestOptions.DEFAULT);
+
+        SearchHits hits = searchResponse.getHits();
+        System.out.println("took:" + searchResponse.getTook());
+        System.out.println("timeout:" + searchResponse.isTimedOut());
+        System.out.println("total:" + hits.getTotalHits());
+        System.out.println("MaxScore:" + hits.getMaxScore());
+        for (SearchHit hit : hits) {
+            //输出每条查询的结果信息
+            System.out.println(hit.getSourceAsString());
         }
-        return bulkByScrollResponse;
+        return hits;
     }
 
+
+    public void search(String MiopictureURL) throws IOException {
+
+        // 创建搜索请求对象
+        SearchRequest request = new SearchRequest();
+        request.indices(index);
+
+        // 构建查询的请求体
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+        sourceBuilder.query(QueryBuilders.termQuery("pictureURL", MiopictureURL));
+        request.source(sourceBuilder);
+
+        SearchResponse response = client.search(request, RequestOptions.DEFAULT);
+        // 查询匹配
+        SearchHits hits = response.getHits();
+        System.out.println("took:" + response.getTook());
+        System.out.println("timeout:" + response.isTimedOut());
+        System.out.println("total:" + hits.getTotalHits());
+        System.out.println("MaxScore:" + hits.getMaxScore());
+        System.out.println("hits========>>");
+        for (SearchHit hit : hits) {
+            //输出每条查询的结果信息
+            System.out.println(hit.getSourceAsString());
+        }
+        System.out.println("<<========");
+
+
+    }
+
+    public long updateByQuery2(String MiopictureURL, String SeqpictureURL) throws IOException {
+        UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest();
+        updateByQueryRequest.indices(index);
+        //搜索条件为id(因为插入时指定doc的id和实体类id一致，这样就保证了搜索结果唯一)
+        //如果搜索条件查出的结果很多，使用需谨慎
+        updateByQueryRequest.setQuery(new TermQueryBuilder("pictureURL", MiopictureURL));
+        //map存储脚本实体参数值
+        Map<String, Object> map = new HashMap<>();
+        map.put("pictureURL", SeqpictureURL);
+        //指定哪些字段需要更新,ctx._source.xxx为es的字段，使用map的值赋值更新
+        updateByQueryRequest.setScript(new Script(ScriptType.INLINE,
+                "painless",
+                "ctx._source.pictureURL =" + "'" + SeqpictureURL + "'"
+                , map));
+        BulkByScrollResponse bulkByScrollResponse = client.updateByQuery(updateByQueryRequest, RequestOptions.DEFAULT);
+        return bulkByScrollResponse.getStatus().getUpdated();
+    }
+
+    public static String escape(String s) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '\\' || c == '+' || c == '-' || c == '!' || c == '(' || c == ')' || c == ':'
+                    || c == '^' || c == '[' || c == ']' || c == '\"' || c == '{' || c == '}' || c == '~'
+                    || c == '*' || c == '?' || c == '|' || c == '&' || c == '/'|| c == '_'|| c == '.') {
+                sb.append('\\');
+            }
+            sb.append(c);
+        }
+        return sb.toString();
+    }
 
 }
