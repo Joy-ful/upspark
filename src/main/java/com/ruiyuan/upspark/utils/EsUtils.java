@@ -222,7 +222,7 @@ public class EsUtils {
         updateByQuery.setRefresh(true);
         //查询条件如果是and关系使用must 如何是or关系使用should
         FuzzyQueryBuilder boolQueryBuilder = QueryBuilders.fuzzyQuery("pictureURL", escape);
-                //.filter(QueryBuilders.termQuery("pictureURL", MiopictureURL));
+        //.filter(QueryBuilders.termQuery("pictureURL", MiopictureURL));
         //.should(QueryBuilders.termQuery("name", "张三"));
         //System.out.println(boolQueryBuilder);
         updateByQuery.setQuery(boolQueryBuilder);
@@ -241,7 +241,7 @@ public class EsUtils {
     }
 
 
-    public  SearchHits searchsss(String MiopictureURL) throws IOException {
+    public SearchHits searchsss(String MiopictureURL) throws IOException {
         SearchRequest searchRequest = new SearchRequest(index);
 
         SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
@@ -259,7 +259,7 @@ public class EsUtils {
         //匹配度从高到低
         ///sourceBuilder.sort(new ScoreSortBuilder().order(SortOrder.DESC));
 
-        SearchResponse searchResponse = client.search(searchRequest,RequestOptions.DEFAULT);
+        SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
 
         SearchHits hits = searchResponse.getHits();
         System.out.println("took:" + searchResponse.getTook());
@@ -320,13 +320,42 @@ public class EsUtils {
         return bulkByScrollResponse.getStatus().getUpdated();
     }
 
+    public SearchHits mubiao() throws IOException {
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+
+        //-----------------------指定where条件-------------------------
+        //merchantId = '12361'
+        QueryBuilder tempBuilder = QueryBuilders.termQuery("className", "car");
+        //must:and  should:or
+        boolQueryBuilder.must(tempBuilder);
+        // createTime >=1993-01-01 12:12:12 时间戳 725861532000L
+        tempBuilder = QueryBuilders.rangeQuery("createTime").from("2022-06-07T16:33:12.005", true);
+        boolQueryBuilder.must(tempBuilder);
+        // createTime<=2021-01-01 12:12:12  时间戳 1609474332000L
+        tempBuilder = QueryBuilders.rangeQuery("createTime").to("2022-06-07T16:34:12.005", true);
+        boolQueryBuilder.must(tempBuilder);
+        // ------------把where条件 设置进SearchSourceBuilder
+        sourceBuilder.query(boolQueryBuilder);
+
+        //order by createTime  排序设置
+        sourceBuilder.sort("pictureUrl", SortOrder.DESC);
+        // limit 0,100  分页
+        sourceBuilder.from(0).size(100);
+        // 指定索引名称
+        SearchRequest request = new SearchRequest("vstream-ai-service");
+        request.source(sourceBuilder);
+        //client 为 RestHighLevelClient
+        return client.search(request, RequestOptions.DEFAULT).getHits();
+    }
+
     public static String escape(String s) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
             if (c == '\\' || c == '+' || c == '-' || c == '!' || c == '(' || c == ')' || c == ':'
                     || c == '^' || c == '[' || c == ']' || c == '\"' || c == '{' || c == '}' || c == '~'
-                    || c == '*' || c == '?' || c == '|' || c == '&' || c == '/'|| c == '_'|| c == '.') {
+                    || c == '*' || c == '?' || c == '|' || c == '&' || c == '/' || c == '_' || c == '.') {
                 sb.append('\\');
             }
             sb.append(c);
