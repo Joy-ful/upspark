@@ -44,7 +44,7 @@ public class SparkUp {
         try {
             handler = new SparkLauncher(env)
                     .setSparkHome("/opt/cloudera/parcels/CDH-6.2.0-1.cdh6.2.0.p0.967373/lib/spark")
-                    .setAppResource("/data/software/UVVideo/target/UAVVideoStreamingManagement-1.0.jar")
+                    .setAppResource("/software/UVVideo/UAVideo/target/UAVVideoStreamingManagement-1.0.jar")
                     .setMainClass("com.ruiyuan.sparkjobs.UAVVideoStreamingTask")
                     .setAppName("UAVVideoStreamingTask" + " " + df.format(new Date()))
                     .setMaster("yarn")
@@ -151,7 +151,7 @@ public class SparkUp {
         cf.setBoolean("mapreduce.app-submission.cross-platform", cross_platform);
 
         // 设置yarn资源，不然会使用localhost:8032
-        cf.set("yarn.resourcemanager.address", "172.17.7.12:8032");
+        cf.set("yarn.resourcemanager.address", "10.10.13.180:8032");
 
         // 创建yarn的客户端，此类中有杀死任务的方法
         YarnClient yarnClient = YarnClient.createYarnClient();

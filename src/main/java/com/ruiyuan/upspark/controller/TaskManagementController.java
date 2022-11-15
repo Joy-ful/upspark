@@ -17,12 +17,12 @@ public class TaskManagementController {
 
     //String UVAID, String url
     @RequestMapping(value = "/submitSparkJob", method = RequestMethod.POST)
-    private String start(@RequestBody Map<String, Object> param)  {
+    private String start(@RequestParam Map<String, String> param)  {
         return taskManagementService.startTask(param);
     }
 
     @RequestMapping(value="/killSparkJob", method= RequestMethod.POST)
-    private String stop(@RequestBody Map<String, Object> param) {
-        return taskManagementService.stopTask(param);
+    private String stop(@RequestBody String jobID) {
+        return taskManagementService.stopTask(jobID);
     }
 }
